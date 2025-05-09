@@ -1,31 +1,30 @@
-name: Build and Deploy Loader
+name: Build Loader
 
 on:
   workflow_dispatch:
     inputs:
       key:
-        description: 'License Key'
+        description: 'License Key for the loader'
         required: true
+        type: string
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout code
         uses: actions/checkout@v2
 
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: '1.16'
+          go-version: '1.17'
 
-      - name: Build Loader
+      - name: Inject License Key
         run: |
-          go build -o loader.exe loader.go
-        working-directory: .
+          echo "License Key: ${{ github.event.inputs.key }}"
+          # You can use the key in your build process here
 
-      - name: Upload Loader
-        uses: actions/upload-artifact@v2
-        with:
-          name: loader
-          path: loader.exe
+      - name: Run Build
+        run: |
+          go run loader.go ${{ github.event.inputs.key }}
