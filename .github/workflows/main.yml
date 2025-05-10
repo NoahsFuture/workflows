@@ -1,3 +1,5 @@
+# .github/workflows/main.yml
+
 name: Build Loader
 
 on:
@@ -25,7 +27,6 @@ jobs:
         id: find_loader
         run: |
           FILE=$(ls -t loader_*.go | head -n 1)
-          echo "Found loader file: $FILE"
           echo "loader_file=$FILE" >> "$GITHUB_OUTPUT"
 
       - name: Inject key into loader file
@@ -34,12 +35,12 @@ jobs:
           BYTE_STRING=$(echo -n "$KEY" | od -An -tx1 | tr -s ' ' | sed 's/ /, 0x/g' | sed 's/^/, 0x/')
           sed -i "s/REPLACE_LICENSE_KEY/${BYTE_STRING}/" "${{ steps.find_loader.outputs.loader_file }}"
 
-      - name: Build loader
+      - name: Build Windows EXE
         run: |
-          go build -o loader_output "${{ steps.find_loader.outputs.loader_file }}"
+          GOOS=windows GOARCH=amd64 go build -o loader.exe "${{ steps.find_loader.outputs.loader_file }}"
 
-      - name: Upload artifact
+      - name: Upload EXE Artifact
         uses: actions/upload-artifact@v4
         with:
           name: loader
-          path: loader_output
+          path: loader.exe
