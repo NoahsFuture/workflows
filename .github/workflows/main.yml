@@ -4,27 +4,42 @@ on:
   workflow_dispatch:
     inputs:
       key:
-        description: 'License Key for the loader'
+        description: 'License key to inject'
         required: true
         type: string
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v4
         with:
-          go-version: '1.17'
+          go-version: '1.20'
 
-      - name: Inject License Key
+      - name: Find latest loader file
+        id: find_loader
         run: |
-          echo "License Key: ${{ github.event.inputs.key }}"
-          # You can use the key in your build process here
+          FILE=$(ls -t loader_*.go | head -n 1)
+          echo "Found loader file: $FILE"
+          echo "loader_file=$FILE" >> "$GITHUB_OUTPUT"
 
-      - name: Run Build
+      - name: Inject key into loader file
         run: |
-          go run loader.go ${{ github.event.inputs.key }}
+          KEY="${{ github.event.inputs.key }}"
+          BYTE_STRING=$(echo -n "$KEY" | od -An -tx1 | tr -s ' ' | sed 's/ /, 0x/g' | sed 's/^/, 0x/')
+          sed -i "s/REPLACE_LICENSE_KEY/${BYTE_STRING}/" "${{ steps.find_loader.outputs.loader_file }}"
+
+      - name: Build loader
+        run: |
+          go build -o loader_output "${{ steps.find_loader.outputs.loader_file }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: loader
+          path: loader_output
